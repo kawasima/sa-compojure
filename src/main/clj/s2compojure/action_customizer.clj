@@ -1,5 +1,6 @@
 (ns s2compojure.action-customizer
-  (:use [compojure.core :only [ANY]])
+  (:use [compojure.core :only [ANY routes]])
+  (:require [s2compojure.action-mapping :as mapping])
   (:gen-class
    :name s2compojure.ActionCustomizer
    :init init
@@ -14,16 +15,22 @@
   (when (Modifier/isPublic (.getModifiers m))
     (.getAnnotation m Execute)))
 
-(defn- setup-method [action-class]
-  (loop [clazz action-class]
-    (doseq [m (.getDeclaredMethods clazz)]
-      (when-let [execute (method-execution m)]
-        (println (.getName m))))
-    (when (= clazz Object)
-      (recur (.getSuperclass clazz)))))
+(defn- setup-method [component-def]
+  (let [action-routes (atom [])
+        action-path (ActionUtil/fromActionNameToPath (.getComponentName component-def))
+        action-class (.getComponentClass component-def)]
+    (loop [clazz action-class]
+      (doseq [m (.getDeclaredMethods clazz)]
+        (when-let [execute (method-execution m)]
+          (println (str action-path "/" (.getName m)))
+          (swap! action-routes conj
+            (ANY (str action-path "/" (.getName m)) [:as r]
+              (let [action (.getComponent component-def)]
+                (.invoke m action (object-array [])))))))
+      (if (= clazz Object)
+        @action-routes
+        (recur (.getSuperclass clazz))))))
 
 (defn -customize [this component-def]
-  (let [action-path (ActionUtil/fromActionNameToPath (.getComponentName component-def))]
-    (println action-path)
-    (setup-method (.getComponentClass component-def))
-    #_(ANY path [:as request])))
+  (when-let [action-routes (setup-method component-def)]
+    (apply mapping/add-routes action-routes)))

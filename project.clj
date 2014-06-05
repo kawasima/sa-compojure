@@ -16,5 +16,5 @@
   :plugins [[lein-ring "0.8.10"]]
 
   :aot [s2compojure.action-customizer]
-  :ring {:handler s2compojure.core/handler}
+  :ring {:handler s2compojure.core/app}
   :main s2compojure.core)
