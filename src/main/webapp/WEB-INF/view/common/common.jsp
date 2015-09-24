@@ -4,5 +4,9 @@
 <%@taglib prefix="html" uri="http://struts.apache.org/tags-html"%>  
 <%@taglib prefix="bean" uri="http://struts.apache.org/tags-bean"%>  
 <%@taglib prefix="tiles" uri="http://jakarta.apache.org/struts/tags-tiles"%>
+<%--
 <%@taglib prefix="s" uri="http://sastruts.seasar.org"%>
 <%@taglib prefix="f" uri="http://sastruts.seasar.org/functions"%>
+--%>
+<%@taglib prefix="s" uri="/WEB-INF/tld/s.tld"%>
+<%@taglib prefix="f" uri="/WEB-INF/tld/f.tld"%>
