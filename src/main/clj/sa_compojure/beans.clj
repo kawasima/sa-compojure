@@ -29,7 +29,6 @@
       (getDynaProperties [this]
         (into-array DynaProperty (vals prop-map)))
       (getDynaProperty [this name]
-        (println "getDynaProperty:" name ":" prop-map)
         (get prop-map name))
       (getName [this]
         (.getName bean-class))
@@ -73,7 +72,16 @@
     (^void set [this ^String name ^String key value]
       (throw (UnsupportedOperationException. "set")))))
 
-(defn set-map-property [bean k v])
+(defn string-array? [v]
+  (and (not (nil? v))
+       (.isArray (class v))
+       (= (.getComponentType (class v)) String)))
+
+(defn set-map-property [m k v]
+  (if (string-array? v)
+    (.put m k (if (> (.-length v) 0) (aget v 0) nil))
+    (.put m k v)))
+
 (defn set-simple-property [bean k v]
   (if (instance? Map bean)
     (set-map-property bean k v)
@@ -95,7 +103,8 @@
               (nil? v)
               (.setValue prop-desc bean nil)
 
-              ;; TODO String[]
+              (string-array? v)
+              (.setValue prop-desc bean (if (> (.-length v) 0) (aget v 0) nil))
 
               :else
               (.setValue prop-desc bean v))))))))
