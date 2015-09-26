@@ -650,7 +650,7 @@ public class MockRequest implements HttpServletRequest {
     }
 
     public ServletContext getServletContext() {
-        throw new UnsupportedOperationException("getServletContext");
+        return servletContext;
     }
 
     public AsyncContext startAsync() throws IllegalStateException {

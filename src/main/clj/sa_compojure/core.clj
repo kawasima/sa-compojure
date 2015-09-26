@@ -3,7 +3,7 @@
         [ring.adapter.jetty9])
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
-            [s2compojure.action-mapping :as mapping])
+            [sa-compojure.action-mapping :as mapping])
   (:import [org.seasar.framework.container.factory SingletonS2ContainerFactory]
            [org.seasar.framework.container.deployer ComponentDeployerFactory
             ComponentDeployerFactory$DefaultProvider ExternalComponentDeployerProvider]

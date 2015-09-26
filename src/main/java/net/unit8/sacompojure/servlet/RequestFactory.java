@@ -17,6 +17,7 @@ public class RequestFactory {
         config = new MockServletConfig();
         context = new MockServletContext();
         context.setAttribute(InstanceManager.class.getName(), new SAInstansManager());
+        context.setInitParameter("sastruts.VIEW_PREFIX", "/WEB-INF/view");
         config.setServletContext(context);
     }
 

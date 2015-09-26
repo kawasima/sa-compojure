@@ -22,7 +22,7 @@ import java.io.IOException;
  * @author kawasima
  */
 public class JspHandler {
-    private final transient Log log = LogFactory.getLog(JspServlet.class);
+    private final transient Log log = LogFactory.getLog(JspHandler.class);
 
     private JspRuntimeContext runtimeContext;
     private Options options;

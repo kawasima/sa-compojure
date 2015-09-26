@@ -9,7 +9,7 @@
 <h1>Tutorial: Add</h1>
 
 <html:errors/>
-<s:form>
+<s:form action="submit">
 <html:text property="arg1"/> +
 <html:text property="arg2"/>
 = ${f:h(result)}<br />

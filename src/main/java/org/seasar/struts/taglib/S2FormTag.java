@@ -15,15 +15,17 @@
  */
 package org.seasar.struts.taglib;
 
+import clojure.java.api.Clojure;
+import clojure.lang.IFn;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.struts.Globals;
-import org.apache.struts.action.ActionMapping;
-import org.apache.struts.action.ActionServlet;
-import org.apache.struts.config.FormBeanConfig;
 import org.apache.struts.config.ModuleConfig;
 import org.apache.struts.taglib.TagUtils;
 import org.apache.struts.taglib.html.Constants;
-import org.apache.struts.util.MessageResources;
-import org.apache.struts.util.RequestUtils;
+import org.apache.struts.taglib.html.FormTag;
+import org.seasar.framework.container.ComponentDef;
 import org.seasar.framework.container.S2Container;
 import org.seasar.framework.container.factory.SingletonS2ContainerFactory;
 import org.seasar.framework.util.StringUtil;
@@ -36,15 +38,18 @@ import javax.servlet.http.HttpSession;
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspWriter;
 import javax.servlet.jsp.PageContext;
-import javax.servlet.jsp.tagext.TagSupport;
 import java.io.IOException;
 
 /**
  * Seasar2用のFormTagです。
  */
-public class S2FormTag extends TagSupport {
+public class S2FormTag extends FormTag {
 
     private static final long serialVersionUID = 1L;
+
+    public static final String Package = "org.apache.struts.taglib.html";
+    public static final String BEAN_KEY = Package + ".BEAN";
+    public static final String FORM_KEY = Package + ".FORM";
 
     // ----------------------------------------------------- Instance Variables
 
@@ -156,7 +161,7 @@ public class S2FormTag extends TagSupport {
      * as the 'scope' attribute, if that was specified, or is obtained from the
      * associated <code>ActionMapping</code> otherwise.
      */
-    protected String beanScope = null;
+    protected String beanScope = "request"; // FIXME
 
     /**
      * The type of the form bean to (create and) use. This is either the same
@@ -535,7 +540,7 @@ public class S2FormTag extends TagSupport {
         try {
             writer.print(results.toString());
         } catch (IOException e) {
-            throw new JspException(messages.getMessage("common.io", e.toString()));
+            throw new JspException(e.toString(), e);
         }
 
         // Continue processing this page
@@ -671,7 +676,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeypressのイベント定義を返します。
-     * 
+     *
      * @return onkeypressのイベント定義
      */
     public String getOnkeypress() {
@@ -680,7 +685,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeypressのイベント定義を設定します。
-     * 
+     *
      * @param onkeypress
      *            onkeypressのイベント定義
      */
@@ -690,7 +695,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeyupのイベント定義を返します。
-     * 
+     *
      * @return onkeyupのイベント定義
      */
     public String getOnkeyup() {
@@ -699,7 +704,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeyupのイベント定義を設定します。
-     * 
+     *
      * @param onkeyup
      *            onkeyupのイベント定義
      */
@@ -709,7 +714,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeydownのイベント定義を返します。
-     * 
+     *
      * @return onkeydownのイベント定義
      */
     public String getOnkeydown() {
@@ -718,7 +723,7 @@ public class S2FormTag extends TagSupport {
 
     /**
      * onkeydownのイベント定義を設定します。
-     * 
+     *
      * @param onkeydown
      *            onkeydownのイベント定義
      */
@@ -726,16 +731,7 @@ public class S2FormTag extends TagSupport {
         this.onkeydown = onkeydown;
     }
 
-    @Override
     protected void lookup() throws JspException {
-        moduleConfig = TagUtils.getInstance().getModuleConfig(pageContext);
-        if (moduleConfig == null) {
-            JspException e = new JspException(messages
-                    .getMessage("formTag.collections"));
-            pageContext.setAttribute(Globals.EXCEPTION_KEY, e,
-                    PageContext.REQUEST_SCOPE);
-            throw e;
-        }
         if (action == null) {
             action = ActionUtil.calcActionPath();
         } else if (!action.startsWith("/")) {
@@ -751,71 +747,36 @@ public class S2FormTag extends TagSupport {
         String[] names = StringUtil.split(path, "/");
         S2Container container = SingletonS2ContainerFactory.getContainer();
         StringBuilder sb = new StringBuilder(50);
+        ComponentDef actionComponentDef = null;
         for (int i = 0; i < names.length; i++) {
             if (container.hasComponentDef(sb + names[i] + "Action")) {
+                actionComponentDef = container.getComponentDef(sb + names[i] + "Action");
                 String actionPath = RoutingUtil.getActionPath(names, i);
-                S2ActionMapping s2mapping = (S2ActionMapping) moduleConfig
-                        .findActionConfig(actionPath);
                 String paramPath = RoutingUtil.getParamPath(names, i + 1);
                 if (StringUtil.isEmpty(paramPath)) {
-                    mapping = s2mapping;
-                    action = s2mapping.getPath() + "/" + queryString;
-                    break;
+                    action = actionPath + "/" + queryString;
                 }
-                S2ExecuteConfig executeConfig = s2mapping
-                        .findExecuteConfig(paramPath);
-                if (executeConfig != null) {
-                    mapping = s2mapping;
-                    break;
-                }
+                break;
             }
             if (container.hasComponentDef(sb + "indexAction")) {
+                actionComponentDef = container.getComponentDef(sb + "indexAction");
                 String actionPath = RoutingUtil.getActionPath(names, i - 1)
                         + "/index";
                 String paramPath = RoutingUtil.getParamPath(names, i);
-                S2ActionMapping s2mapping = (S2ActionMapping) moduleConfig
-                        .findActionConfig(actionPath);
-                if (StringUtil.isEmpty(paramPath)) {
-                    mapping = s2mapping;
-                    action = RoutingUtil.getActionPath(names, i - 1)
-                            + queryString;
-                    break;
-                }
-                S2ExecuteConfig executeConfig = s2mapping
-                        .findExecuteConfig(paramPath);
-                if (executeConfig != null) {
-                    mapping = s2mapping;
-                    break;
-                }
+                break;
             }
             sb.append(names[i] + "_");
         }
-        if (mapping == null && container.hasComponentDef(sb + "indexAction")) {
-            String actionPath = RoutingUtil.getActionPath(names,
-                    names.length - 1)
-                    + "/index";
-            mapping = (ActionMapping) moduleConfig.findActionConfig(actionPath);
-            action = RoutingUtil.getActionPath(names, names.length - 1) + "/";
-        }
-        if (mapping == null) {
-            JspException e = new JspException(messages.getMessage(
-                    "formTag.mapping", action));
+        if (actionComponentDef == null) {
+            JspException e = new JspException(action);
             pageContext.setAttribute(Globals.EXCEPTION_KEY, e,
                     PageContext.REQUEST_SCOPE);
             throw e;
         }
-        FormBeanConfig formBeanConfig = moduleConfig.findFormBeanConfig(mapping
-                .getName());
-        if (formBeanConfig == null) {
-            JspException e = new JspException(messages.getMessage(
-                    "formTag.formBean", mapping.getName(), action));
-            pageContext.setAttribute(Globals.EXCEPTION_KEY, e,
-                    PageContext.REQUEST_SCOPE);
-            throw e;
-        }
-        beanName = mapping.getAttribute();
-        beanScope = mapping.getScope();
-        beanType = formBeanConfig.getType();
+        IFn findActionConfig = Clojure.var("sa-compojure.action-customizer", "find-action-config");
+        IPersistentMap actionConfig = (IPersistentMap) findActionConfig.invoke(actionComponentDef);
+        this.beanName =  ((IPersistentMap) actionConfig.valAt(Keyword.intern("action-mapping")))
+                .valAt(Keyword.intern("name")).toString();
     }
 
     protected void initFormBean() throws JspException {
@@ -826,15 +787,12 @@ public class S2FormTag extends TagSupport {
 
         Object bean = pageContext.getAttribute(beanName, scope);
         if (bean == null) {
-            bean = RequestUtils.createActionForm(
-                    (HttpServletRequest) pageContext.getRequest(), mapping,
-                    moduleConfig, servlet);
+            bean = pageContext.getRequest().getAttribute(beanName);
             if (bean == null) {
-                throw new JspException(messages.getMessage("formTag.create",
-                        beanType));
+                throw new JspException("ActionForm not found.");
             }
-            pageContext.setAttribute(beanName, bean, scope);
         }
+
         pageContext.setAttribute(Constants.BEAN_KEY, bean,
                 PageContext.REQUEST_SCOPE);
     }
@@ -864,12 +822,10 @@ public class S2FormTag extends TagSupport {
         disabled = false;
         focus = null;
         focusIndex = null;
-        mapping = null;
         method = null;
         onreset = null;
         onsubmit = null;
         readonly = false;
-        servlet = null;
         style = null;
         styleClass = null;
         styleId = null;
